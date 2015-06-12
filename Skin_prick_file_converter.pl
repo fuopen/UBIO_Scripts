@@ -12,13 +12,13 @@
 
 
 #-----------------------------------------------------
-$output = '/Users/ip304/Documents/UBIOPRED/UBIOPRED_data/Adult_Data/May2014/processed/2014-05-16-adult_skin_prick_consolidated.csv'; # Set output file
+$output = '/Users/ip304/Documents/UBIOPRED/UBIOPRED_data/Paediatric_Data/New_Baseline_Data_to_be_included_Nov_2014_release/processed/2014-05-16-pead_skin_prick_consolidated.csv'; # Set output file
 open (OUT, ">$output"); #|| die print "\n\Could not write to the output file.$!\n"; # Open the output file
 
 
 #READ IN FIRST FILE AND CREATE HASH
 #-----------------------------------------------------
-$input_file = '/Users/ip304/Documents/UBIOPRED/UBIOPRED_data/Adult_Data/May2014/processed/2014-05-16-adult_skin_prick.csv'; #First list
+$input_file = '/Users/ip304/Documents/UBIOPRED/UBIOPRED_data/Paediatric_Data/New_Baseline_Data_to_be_included_Nov_2014_release/raw/2014-05-16-pead_skin_prick.csv'; #First list
 open (INPUT, $input_file) || die print "\nCould not open input list\n"; # Open the file
 
 
