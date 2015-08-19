@@ -27,3 +27,6 @@ test2$long_kit = as.character(test2$long_kit)
 
 #Save the complete pseudo db
 adult_pseudo_code = test2
+
+write.table(adult_pseudo_code, file = "/Users/ip304/Documents/UBIOPRED/UBIOPRED_data/Adult_Data/Longitutinal_Data/20150225/load/long_kit_ids.txt", sep = "\t", row.names= F, na = ".", quote =F)
+

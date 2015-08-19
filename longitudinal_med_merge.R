@@ -1,4 +1,4 @@
-#Script to merge medication data and assign the correct categories
+#Script to merge medication data and assign the correct categories (NOT COMPLETE...USE the AWK script)
 
 # Load the gdata library for reading writing to Excel
 library("gdata", lib.loc="/Library/Frameworks/R.framework/Versions/3.1/Resources/library")

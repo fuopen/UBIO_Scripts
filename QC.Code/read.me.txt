@@ -1,0 +1,13 @@
+This directory contains six R-scripts, created and run in R version 2.15.2:
+
+1. adult.clean.run.r reads in raw data files from Nubilaria and outputs a list of issues (.csv)
+2. adult.clean.1800815.r contains the functions called up by adult.clean.run.r
+3. adult.jitterplots.r reads in raw data files from Nubilaria and outputs graphical displays (.pdf)
+
+4. paed.clean.run.r reads in raw data files from Nubilaria and outputs a list of issues (.csv)
+5. paed.clean.1800815.r contains the functions called up by paed.clean.run.r
+6. paed.jitterplots.r reads in raw data files from Nubilaria and outputs graphical displays (.pdf)
+
+
+Aruna Bansal
+19th August 2015
