@@ -1,0 +1,124 @@
+# WGCNA script
+library(affy)
+library(limma)
+library(WGCNA)
+library(RColorBrewer)
+library(preprocessCore)
+library(brainwaver)
+library(rgl)
+
+# This script begins from a filtered set of microarray data (filter with LIMMA on pvalue)
+# It assumes two objects:
+# exprs: containing filtered expression values, with patients in columns
+# clinical: phenotype variable with patients in rows, ! all values have to be numeric !
+
+
+gsg<-goodSamplesGenes(exprs, verbose=3)
+gsg$allOK
+# Should be true, otherwise some samples have to be removed from the analysis
+sampleTree<-flashClust(dist(t(exprs)), method="ward")
+plot(sampleTree)
+# This step to check for obvious outliers
+traitColors<-numbers2colors(clinical, signed=FALSE)
+plotDendroAndColors(sampleTree2, traitColors, groupLabels=names(clinical), main="Sample Dendrogram and trait heatmap",marAll=c(1,10,3,1))
+# marALL: margins sizes around the plot (in order: bottom, left, top, right)
+
+# Compute the soft power value best suited for your dataset
+powers<-c(c(1:10), seq(from=12, to=20, by=2))
+powerTables<-vector(mode="list", length=1)
+powerTables<-list(data=pickSoftThreshold(t(exprs), powerVector=powers, verbose=2))
+plotCols<-c(2,5,6,7)
+colNames<-c("Scale Free Topology Model Fit", "Mean Connectivity", "Median Connectivity", "Max Connectivity")
+ylim<-matrix(NA, nrow=2, ncol=4)
+for (col in 1:length(plotCols))
+	{
+	ylim[1, col]<-min(ylim[1,col], powerTables$data$fitIndices[,plotCols[col]], na.rm=T)
+	ylim[2, col]<-max(ylim[2,col], powerTables$data$fitIndices[,plotCols[col]], na.rm=T)
+	}
+sizeGrWindow(8, 6)
+par(mfcol = c(2,2));
+par(mar=c(4.2, 4.2, 2.2, 0.5))
+cex1 = 0.7;
+for (col in 1:4)
+	{
+	plot(powerTables$data$fitIndices[,1], -sign(powerTables$data$fitIndices[,3])*powerTables$data$fitIndices[,2],xlab="Soft Threshold (Power)", ylab=colNames[col], type="n", ylim=ylim[,col], main=colNames[col])
+	addGrid()
+	if(col==1)
+		{
+		text(powerTables$data$fitIndices[,1], -sign(powerTables$data$fitIndices[,3])*powerTables$data$fitIndices[,2], labels=powers, cex=cex1)
+		}
+	else
+	text(powerTables$data$fitIndices[,1], powerTables$data$fitIndices[,plotCols[col]], labels=powers, cex=cex1)
+	}
+# Pick a softPower suited to your dataset, see http://labs.genetics.ucla.edu/horvath/CoexpressionNetwork/Rpackages/WGCNA/Tutorials/FemaleLiver-02-networkConstr-man.pdf for more details	
+softPower<-6
+
+# Adjacency can be computed for either unsigned or signed network
+adjacency<-adjacency(t(exprs), power=softPower, type="unsigned")
+# adjacency<-adjacency(t(exprs), power=softPower*2, type="signed")
+TOM<-TOMsimilarity(adjacency)
+dissTOM<-1-TOM
+geneTree<-flashClust(as.dist(dissTOM), method="average")
+sizeGrWindow(12,9)
+plot(geneTree, xlab="", sub="", main="Gene Clustering on TOM-based similarity", labels=FALSE, hang=0.04)
+# minmodule Size can be tweaked
+minModuleSize=30
+# cutHeight is the height at which you cut the tree above; a lower value will yield a larger grey (= trash) module, ! the program expects that at least 1 gene goes into the grey module
+dynamicMods<-cutreeDynamic(dendro=geneTree, distM=dissTOM, deepSplit=2, pamRespectsDendro=FALSE, minClusterSize=minModuleSize, cutHeight=0.989)
+table(dynamicMods)
+dynamicColors<-labels2colors(dynamicMods)
+table(dynamicColors)
+sizeGrWindow(8,6)
+plotDendroAndColors(geneTree, dynamicColors, "Dynamic Tree Cut", dendroLabels=FALSE, hang=0.03, addGuide=TRUE, guideHang=0.05, main="Gene Dendrogram and Modules Colors")
+# Merging modules
+MEList<-moduleEigengenes(t(exprs), colors=dynamicColors)
+MEs<-MEList$eigengenes
+MEDiss<-1-cor(MEs)
+METree<-flashClust(as.dist(MEDiss), method="average")
+sizeGrWindow(7,6)
+plot(METree, main="Clustering of module Eigengenes", xlab="", sub="")
+# This plot shows the tree between the eigengenes of the modules
+# MEDissThres is the threshold of dissimilarity to merge (1-cor) = 0.2 means modules with 80 % correlation will be merged
+MEDissThres<-0.20
+abline(h=MEDissThres, col="red")
+merge<-mergeCloseModules(t(exprs), dynamicColors, cutHeight=MEDissThres, verbose=3)
+mergedColors<-merge$colors
+mergedMEs<-merge$newMEs
+sizeGrWindow(12,9)
+plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors), c("Dynamic Tree cut", "Merged dynamic"), dendroLabels=FALSE, hang=0.03, addGuide=TRUE, guideHang=0.05)
+moduleColors<-mergedColors
+colorOrder<-c("grey", standardColors(50))
+moduleLabels<-match(moduleColors, colorOrder)-1
+MEs<-mergedMEs
+save(MEs, moduleLabels, moduleColors, geneTree, file="ModuleContructionStepbyStepSigned.Rdata")
+
+# Relating modules with clinical traits
+nsamples<-ncol(exprs)
+ngenes<-nrow(exprs)
+MEs0<-moduleEigengenes(t(exprs), mergedColors)$eigengenes
+MEs<-orderMEs(MEs0)
+moduleTraitCor<-list()
+moduleTraitPvalue<-list()
+moduleTraitCor<-cor(MEs, clinical, use="p")
+moduleTraitPvalue<-corPvalueFisher(moduleTraitCor, nsamples)
+sizeGrWindow(10,7)
+textMatrix<-paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1),")", sep="")
+dim(textMatrix)<-dim(moduleTraitCor)
+par(mar=c(12,12,4.1,2.1))
+labeledHeatmap(Matrix=moduleTraitCor, xLabels=names(clinical), yLabels=names(MEs), ySymbols=names(MEs), colorLabels=FALSE, colors=blueWhiteRed(50), textMatrix=textMatrix, setStdMargins=FALSE, cex.text=.7, zlim=c(-1,1), main="Module-Trait relationships")
+
+# Extract the genes from the modules to run a pathway analysis
+for (i in 1:length(names(MEs)))
+	{
+	color<-substrin(names(MEs)[i], 3)
+	dit.create(color)
+	setwd(color)
+	assign(color, rownames(exprs)[which(mergedColors==color)])
+	temp<-rownames(exprs)[which(mergedColors==color)]
+	name<-paste("Module", color, sep="-")
+	save(temp, file=paste(name, ".Rdata", sep=""), compress=T)
+	write.table(temp, file=paste(name, ".txt", sep=""), sep=";")
+	setwd("../")
+	}
+# This will create a ; separated file of the row names in each module
+# They can then be annotated and submitted to g:Profiler for functional analysis
